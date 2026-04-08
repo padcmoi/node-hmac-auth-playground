@@ -24,6 +24,7 @@ This lab uses Redis ACL credentials:
 - `express/api_2/`
 - `express/docker-compose.yml`
 - `express/redis/`
+- `nestjs/` (NestJS equivalent lab)
 
 ## 1) Start Redis + both APIs (Docker, nodemon auto-restart)
 
@@ -121,3 +122,16 @@ curl -s -X POST http://127.0.0.1:3002/public/call-peer-post \
 ```
 
 If everything is correct, `upstreamStatus` should be `200` and `upstreamBody.mode` should be `secure`.
+
+## NestJS equivalent lab
+
+A NestJS version of the same HMAC flow is available in:
+
+- `nestjs/README.md`
+
+Quick start:
+
+```bash
+cd /web/tests/express_api/nestjs
+docker compose up -d
+```
