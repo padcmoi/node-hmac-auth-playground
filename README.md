@@ -20,14 +20,15 @@ This lab uses Redis ACL credentials:
 
 ## Folder layout
 
-- `api_1/`
-- `api_2/`
-- `docker-compose.yml` (Redis)
+- `express/api_1/`
+- `express/api_2/`
+- `express/docker-compose.yml`
+- `express/redis/`
 
 ## 1) Start Redis + both APIs (Docker, nodemon auto-restart)
 
 ```bash
-cd /web/tests/express_api
+cd /web/tests/express_api/express
 docker compose up -d
 docker compose ps
 ```
@@ -47,8 +48,8 @@ docker compose logs -f api_1 api_2
 ## 2) Install dependencies
 
 ```bash
-cd /web/tests/express_api/api_1 && npm install
-cd /web/tests/express_api/api_2 && npm install
+cd /web/tests/express_api/express/api_1 && npm install
+cd /web/tests/express_api/express/api_2 && npm install
 ```
 
 ## 3) Run both APIs
@@ -56,14 +57,14 @@ cd /web/tests/express_api/api_2 && npm install
 Terminal A:
 
 ```bash
-cd /web/tests/express_api/api_1
+cd /web/tests/express_api/express/api_1
 npm run dev
 ```
 
 Terminal B:
 
 ```bash
-cd /web/tests/express_api/api_2
+cd /web/tests/express_api/express/api_2
 npm run dev
 ```
 
@@ -75,7 +76,7 @@ Default ports:
 You can override HMAC credentials on both APIs (must stay identical on both sides):
 
 ```bash
-HMAC_CLIENT_ID=clientIdAbC HMAC_CLIENT_SECRET=superSharedSecret npm run dev
+HMAC_CLIENT_ID=clientIdAbC HMAC_BOOTSTRAP_SECRET=superSharedSecret HMAC_SECRET_TOKEN=sharedHmacToken npm run dev
 ```
 
 ## 4) Routes available on each API
