@@ -1,6 +1,6 @@
 import express from "express";
 import { createClient } from "redis";
-import { captureRawBody, initializeHmacAuth } from "@naskot/node-hmac-auth";
+import { captureRawBody, initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
 
 const API_NAME = "api_1";
 const PORT = Number(process.env.PORT ?? 3001);
@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
   });
   await redis.connect();
 
-  const hmacAuth = initializeHmacAuth({
+  const hmacAuth = initializeHmacHttpAuth({
     redis: redis as any,
     namespace: HMAC_NAMESPACE,
     secretToken: HMAC_SECRET_TOKEN,
@@ -67,7 +67,7 @@ async function bootstrap(): Promise<void> {
       throw new Error(`Client '${HMAC_CLIENT_ID}' not found in Redis namespace '${HMAC_NAMESPACE}'`);
     }
 
-    const peerFetch = hmacAuth.createSignedFetchClient({
+    const peerFetch = hmacAuth.createHttpSignedFetchClient({
       clientId: HMAC_CLIENT_ID,
       secret: client.secretHash,
       secretIsHashed: true,
@@ -142,7 +142,7 @@ async function bootstrap(): Promise<void> {
   });
 
   // Secure routes: HMAC required
-  app.use("/secure", hmacAuth.createMiddleware());
+  app.use("/secure", hmacAuth.createHttpMiddleware());
 
   app.get("/secure/get", (req, res) => {
     const auth = (req as any).hmacAuth ?? null;
