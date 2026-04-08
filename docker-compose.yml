@@ -1,0 +1,64 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: hmac-lab-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./redis/users.acl:/usr/local/etc/redis/users.acl:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "--user", "user", "-a", "password", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api_1:
+    image: node:22-alpine
+    container_name: hmac-lab-api-1
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: "3001"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-api1"
+      HMAC_CLIENT_ID: "clientIdAbC"
+      HMAC_BOOTSTRAP_SECRET: "superSharedSecret"
+      PEER_BASE_URL: "http://api_2:3002"
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./api_1:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
+  api_2:
+    image: node:22-alpine
+    container_name: hmac-lab-api-2
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: "3002"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-api2"
+      HMAC_CLIENT_ID: "clientIdAbC"
+      HMAC_BOOTSTRAP_SECRET: "superSharedSecret"
+      PEER_BASE_URL: "http://api_1:3001"
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./api_2:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
+volumes:
+  redis_data:

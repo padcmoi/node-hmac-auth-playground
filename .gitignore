@@ -1,0 +1,5 @@
+api_1/node_modules/
+api_2/node_modules/
+api_1/dist/
+api_2/dist/
+*.log

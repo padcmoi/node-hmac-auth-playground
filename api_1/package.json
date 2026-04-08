@@ -1,0 +1,24 @@
+{
+  "name": "express-api-1-hmac-lab",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:nodemon": "nodemon --watch src --ext ts --signal SIGTERM --exec \"tsx src/index.ts\"",
+    "start": "tsx src/index.ts",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@naskot/node-hmac-auth": "^0.1.2",
+    "express": "^5.1.0",
+    "redis": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.4",
+    "@types/node": "^24.6.0",
+    "nodemon": "^3.1.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

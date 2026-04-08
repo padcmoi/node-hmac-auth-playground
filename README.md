@@ -1,93 +1,122 @@
-# test hmac lib
+# express_api HMAC lab
 
+Two minimal Express + TypeScript APIs (`api_1`, `api_2`) that call each other using HMAC.
+Both APIs use the same HMAC credentials by default:
 
+- `clientId`: `clientIdAbC`
+- `secret`: `superSharedSecret`
 
-## Getting started
+Each API keeps its own namespace by default:
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- `api_1`: `hmac-lab-api1`
+- `api_2`: `hmac-lab-api2`
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Redis is mandatory for this library, so a Docker Compose file is included.
+This lab uses Redis ACL credentials:
 
-## Add your files
+- user: `user`
+- password: `password`
+- URL: `redis://user:password@127.0.0.1:6379`
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Folder layout
 
+- `api_1/`
+- `api_2/`
+- `docker-compose.yml` (Redis)
+
+## 1) Start Redis + both APIs (Docker, nodemon auto-restart)
+
+```bash
+cd /web/tests/express_api
+docker compose up -d
+docker compose ps
 ```
-cd existing_repo
-git remote add origin https://gitlab.gestionpratique.fr/perso-jj/test-hmac-lib.git
-git branch -M main
-git push -uf origin main
+
+Quick auth check:
+
+```bash
+docker exec -it hmac-lab-redis redis-cli --user user -a password ping
 ```
 
-## Integrate with your tools
+View live logs:
 
-- [ ] [Set up project integrations](https://gitlab.gestionpratique.fr/perso-jj/test-hmac-lib/-/settings/integrations)
+```bash
+docker compose logs -f api_1 api_2
+```
 
-## Collaborate with your team
+## 2) Install dependencies
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+cd /web/tests/express_api/api_1 && npm install
+cd /web/tests/express_api/api_2 && npm install
+```
 
-## Test and Deploy
+## 3) Run both APIs
 
-Use the built-in continuous integration in GitLab.
+Terminal A:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+cd /web/tests/express_api/api_1
+npm run dev
+```
 
-***
+Terminal B:
 
-# Editing this README
+```bash
+cd /web/tests/express_api/api_2
+npm run dev
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Default ports:
 
-## Suggestions for a good README
+- `api_1`: `http://127.0.0.1:3001`
+- `api_2`: `http://127.0.0.1:3002`
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+You can override HMAC credentials on both APIs (must stay identical on both sides):
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+HMAC_CLIENT_ID=clientIdAbC HMAC_CLIENT_SECRET=superSharedSecret npm run dev
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+## 4) Routes available on each API
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Public routes:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- `GET /public/ping`
+- `GET /public/call-peer-get` (public route that fetches peer secure GET route with HMAC)
+- `POST /public/call-peer-post` (public route that fetches peer secure POST route with HMAC)
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Secure routes (HMAC required):
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+- `GET /secure/get`
+- `POST /secure/post`
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## 5) Quick tests
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Public checks
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```bash
+curl -s http://127.0.0.1:3001/public/ping | jq
+curl -s http://127.0.0.1:3002/public/ping | jq
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### Test HMAC GET across APIs
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```bash
+curl -s http://127.0.0.1:3001/public/call-peer-get | jq
+curl -s http://127.0.0.1:3002/public/call-peer-get | jq
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Test HMAC POST across APIs
 
-## License
-For open source projects, say how it is licensed.
+```bash
+curl -s -X POST http://127.0.0.1:3001/public/call-peer-post \
+  -H "content-type: application/json" \
+  -d '{"hello":"from-api1"}' | jq
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+curl -s -X POST http://127.0.0.1:3002/public/call-peer-post \
+  -H "content-type: application/json" \
+  -d '{"hello":"from-api2"}' | jq
+```
+
+If everything is correct, `upstreamStatus` should be `200` and `upstreamBody.mode` should be `secure`.
