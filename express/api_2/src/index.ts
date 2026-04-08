@@ -1,6 +1,6 @@
 import express from "express";
 import { createClient } from "redis";
-import { captureRawBody, initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
+import { captureRawBody, initializeHmacHttpAuth, initializeHmacMessageAuth } from "@naskot/node-hmac-auth";
 
 const API_NAME = "api_2";
 const PORT = Number(process.env.PORT ?? 3002);
@@ -13,6 +13,7 @@ const PEER_BASE_URL = process.env.PEER_BASE_URL ?? "http://127.0.0.1:3001";
 const HMAC_CLIENT_ID = process.env.HMAC_CLIENT_ID ?? "clientIdAbC";
 const HMAC_BOOTSTRAP_SECRET = process.env.HMAC_BOOTSTRAP_SECRET ?? "superSharedSecret";
 const HMAC_SECRET_TOKEN = process.env.HMAC_SECRET_TOKEN ?? "sharedHmacToken";
+type MessageAuthCase = "valid" | "invalid-signature" | "unknown-client";
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -33,6 +34,42 @@ async function parseResponseBody(response: Response): Promise<unknown> {
   }
 }
 
+function readQueryString(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (Array.isArray(value) && typeof value[0] === "string") {
+    return value[0];
+  }
+  return undefined;
+}
+
+function normalizeClaimedClientId(value: unknown): string | undefined {
+  const raw = readQueryString(value);
+  if (!raw) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function normalizeMessageAuthCase(value: unknown): MessageAuthCase {
+  if (value === "unknown-client") {
+    return "unknown-client";
+  }
+  if (value === "invalid-signature" || value === "tamper-signature") {
+    return "invalid-signature";
+  }
+  return "valid";
+}
+
+function extractMessageVerification(body: unknown): unknown {
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+  return (body as Record<string, unknown>).messageVerification ?? null;
+}
+
 async function bootstrap(): Promise<void> {
   const redis = createClient({ url: REDIS_URL });
   redis.on("error", (error) => {
@@ -41,6 +78,11 @@ async function bootstrap(): Promise<void> {
   await redis.connect();
 
   const hmacAuth = initializeHmacHttpAuth({
+    redis: redis as any,
+    namespace: HMAC_NAMESPACE,
+    secretToken: HMAC_SECRET_TOKEN,
+  });
+  const hmacMessageAuth = initializeHmacMessageAuth({
     redis: redis as any,
     namespace: HMAC_NAMESPACE,
     secretToken: HMAC_SECRET_TOKEN,
@@ -74,6 +116,69 @@ async function bootstrap(): Promise<void> {
     });
 
     return peerFetch(url, options);
+  }
+
+  async function buildOutboundMessageProof(message: string, authCase: MessageAuthCase, claimedClientId?: string) {
+    const signed = await hmacMessageAuth.signMessage({
+      clientId: HMAC_CLIENT_ID,
+      message,
+    });
+
+    const proof = {
+      clientId: signed.clientId,
+      message,
+      signature: signed.signature,
+      authCase,
+    };
+
+    if (claimedClientId) {
+      proof.clientId = claimedClientId;
+    }
+
+    if (authCase === "invalid-signature") {
+      proof.signature = `${proof.signature}x`;
+    } else if (authCase === "unknown-client" && !claimedClientId) {
+      proof.clientId = `${proof.clientId}-unknown`;
+    }
+
+    return proof;
+  }
+
+  async function verifyInboundMessageProof(proofInput: unknown) {
+    if (!proofInput || typeof proofInput !== "object") {
+      return {
+        isAuthentic: false,
+        reason: "Missing message proof",
+      };
+    }
+
+    const proof = proofInput as Record<string, unknown>;
+    const clientId = typeof proof.clientId === "string" ? proof.clientId : "";
+    const signature = typeof proof.signature === "string" ? proof.signature : "";
+    const message = proof.message;
+    const authCase = typeof proof.authCase === "string" ? proof.authCase : undefined;
+
+    try {
+      await hmacMessageAuth.verifyMessage({
+        clientId,
+        message,
+        signature,
+      });
+      return {
+        isAuthentic: true,
+        clientId,
+        message,
+        authCase,
+      };
+    } catch (error) {
+      return {
+        isAuthentic: false,
+        clientId,
+        message,
+        authCase,
+        reason: toErrorMessage(error),
+      };
+    }
   }
 
   const app = express();
@@ -118,17 +223,28 @@ async function bootstrap(): Promise<void> {
   // Public route that fetches peer secure POST route with HMAC
   app.post("/public/call-peer-post", async (req, res) => {
     try {
+      const q = readQueryString(req.query.q) ?? "123";
+      const authCase = normalizeMessageAuthCase(readQueryString(req.query.authCase));
+      const claimedClientId = normalizeClaimedClientId(req.query.keyid ?? req.query.keyId);
+      const messageProof = await buildOutboundMessageProof(q, authCase, claimedClientId);
+
       const response = await callPeer(`${PEER_BASE_URL}/secure/post`, {
         method: "POST",
         body: {
           from: API_NAME,
           payload: req.body ?? null,
+          messageProof,
         },
       });
       const body = await parseResponseBody(response);
+      const messageVerification = extractMessageVerification(body);
       res.status(response.status).json({
         ok: response.ok,
         caller: API_NAME,
+        q,
+        authCase,
+        keyId: messageProof.clientId,
+        messageVerification,
         upstreamStatus: response.status,
         upstreamBody: body,
       });
@@ -156,15 +272,18 @@ async function bootstrap(): Promise<void> {
     });
   });
 
-  app.post("/secure/post", (req, res) => {
+  app.post("/secure/post", async (req, res) => {
     const auth = (req as any).hmacAuth ?? null;
+    const body = (req.body ?? null) as Record<string, unknown> | null;
+    const messageVerification = await verifyInboundMessageProof(body?.messageProof);
     res.json({
       ok: true,
       api: API_NAME,
       mode: "secure",
       method: "POST",
-      body: req.body ?? null,
+      body,
       auth,
+      messageVerification,
     });
   });
 

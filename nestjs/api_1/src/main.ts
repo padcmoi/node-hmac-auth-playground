@@ -2,9 +2,9 @@ import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { createClient } from "redis";
-import { initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
+import { initializeHmacHttpAuth, initializeHmacMessageAuth } from "@naskot/node-hmac-auth";
 import { AppModule } from "./app.module.js";
-import type { RuntimeContext } from "./runtime-context.js";
+import type { MessageAuthCase, RuntimeContext } from "./runtime-context.js";
 
 const API_NAME = "api_1";
 const PORT = Number(process.env.PORT ?? 3001);
@@ -15,6 +15,31 @@ const HMAC_CLIENT_ID = process.env.HMAC_CLIENT_ID ?? "clientIdAbC";
 const HMAC_BOOTSTRAP_SECRET = process.env.HMAC_BOOTSTRAP_SECRET ?? "superSharedSecret";
 const HMAC_SECRET_TOKEN = process.env.HMAC_SECRET_TOKEN ?? "sharedHmacToken";
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function normalizeMessageAuthCase(value: unknown): MessageAuthCase {
+  if (value === "unknown-client") {
+    return "unknown-client";
+  }
+  if (value === "invalid-signature" || value === "tamper-signature") {
+    return "invalid-signature";
+  }
+  return "valid";
+}
+
+function normalizeClaimedClientId(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 async function bootstrap(): Promise<void> {
   const redis = createClient({ url: REDIS_URL });
   redis.on("error", (error) => {
@@ -23,6 +48,11 @@ async function bootstrap(): Promise<void> {
   await redis.connect();
 
   const hmacAuth = initializeHmacHttpAuth({
+    redis: redis as any,
+    namespace: HMAC_NAMESPACE,
+    secretToken: HMAC_SECRET_TOKEN,
+  });
+  const hmacMessageAuth = initializeHmacMessageAuth({
     redis: redis as any,
     namespace: HMAC_NAMESPACE,
     secretToken: HMAC_SECRET_TOKEN,
@@ -53,6 +83,69 @@ async function bootstrap(): Promise<void> {
       });
 
       return peerFetch(url, options as any);
+    },
+    createOutboundMessageProof: async (message, authCaseInput, claimedClientIdInput) => {
+      const authCase = normalizeMessageAuthCase(authCaseInput);
+      const claimedClientId = normalizeClaimedClientId(claimedClientIdInput);
+      const signed = await hmacMessageAuth.signMessage({
+        clientId: HMAC_CLIENT_ID,
+        message,
+      });
+
+      const proof = {
+        clientId: signed.clientId,
+        message,
+        signature: signed.signature,
+        authCase,
+      };
+
+      if (claimedClientId) {
+        proof.clientId = claimedClientId;
+      }
+
+      if (authCase === "invalid-signature") {
+        proof.signature = `${proof.signature}x`;
+      } else if (authCase === "unknown-client" && !claimedClientId) {
+        proof.clientId = `${proof.clientId}-unknown`;
+      }
+
+      return proof;
+    },
+    verifyInboundMessageProof: async (proofInput) => {
+      if (!proofInput || typeof proofInput !== "object") {
+        return {
+          isAuthentic: false,
+          reason: "Missing message proof",
+        };
+      }
+
+      const proof = proofInput as Record<string, unknown>;
+      const clientId = typeof proof.clientId === "string" ? proof.clientId : "";
+      const signature = typeof proof.signature === "string" ? proof.signature : "";
+      const message = proof.message;
+      const authCase = typeof proof.authCase === "string" ? proof.authCase : undefined;
+
+      try {
+        await hmacMessageAuth.verifyMessage({
+          clientId,
+          message,
+          signature,
+        });
+        return {
+          isAuthentic: true,
+          clientId,
+          message,
+          authCase,
+        };
+      } catch (error) {
+        return {
+          isAuthentic: false,
+          clientId,
+          message,
+          authCase,
+          reason: toErrorMessage(error),
+        };
+      }
     },
   };
 
