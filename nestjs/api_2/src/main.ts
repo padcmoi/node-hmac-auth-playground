@@ -63,7 +63,7 @@ async function bootstrap(): Promise<void> {
 
   app.useBodyParser("json");
 
-  app.use("/secure", hmacAuth.createExpressMiddleware());
+  app.use("/secure", hmacAuth.createMiddleware());
 
   await app.listen(PORT, "0.0.0.0");
   console.log(`[${API_NAME}] listening on http://0.0.0.0:${PORT}`);

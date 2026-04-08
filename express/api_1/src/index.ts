@@ -142,7 +142,7 @@ async function bootstrap(): Promise<void> {
   });
 
   // Secure routes: HMAC required
-  app.use("/secure", hmacAuth.createExpressMiddleware());
+  app.use("/secure", hmacAuth.createMiddleware());
 
   app.get("/secure/get", (req, res) => {
     const auth = (req as any).hmacAuth ?? null;
