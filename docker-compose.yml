@@ -30,6 +30,7 @@ services:
       HMAC_NAMESPACE: "hmac-lab-api1"
       HMAC_CLIENT_ID: "clientIdAbC"
       HMAC_BOOTSTRAP_SECRET: "superSharedSecret"
+      HMAC_SECRET_TOKEN: "pepperSecret"
       PEER_BASE_URL: "http://api_2:3002"
     ports:
       - "3001:3001"
@@ -52,6 +53,7 @@ services:
       HMAC_NAMESPACE: "hmac-lab-api2"
       HMAC_CLIENT_ID: "clientIdAbC"
       HMAC_BOOTSTRAP_SECRET: "superSharedSecret"
+      HMAC_SECRET_TOKEN: "pepperSecret"
       PEER_BASE_URL: "http://api_1:3001"
     ports:
       - "3002:3002"

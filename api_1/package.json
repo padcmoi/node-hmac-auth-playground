@@ -10,7 +10,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@naskot/node-hmac-auth": "^0.1.2",
+    "@naskot/node-hmac-auth": "^0.2.1",
     "express": "^5.1.0",
     "redis": "^5.8.3"
   },

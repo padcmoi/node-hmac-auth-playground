@@ -12,6 +12,7 @@ const PEER_BASE_URL = process.env.PEER_BASE_URL ?? "http://127.0.0.1:3002";
 // Signing material is loaded from Redis (secretHash) only.
 const HMAC_CLIENT_ID = process.env.HMAC_CLIENT_ID ?? "clientIdAbC";
 const HMAC_BOOTSTRAP_SECRET = process.env.HMAC_BOOTSTRAP_SECRET ?? "superSharedSecret";
+const HMAC_SECRET_TOKEN = process.env.HMAC_SECRET_TOKEN ?? "sharedHmacToken";
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -42,6 +43,7 @@ async function bootstrap(): Promise<void> {
   const hmacAuth = initializeHmacAuth({
     redis: redis as any,
     namespace: HMAC_NAMESPACE,
+    secretToken: HMAC_SECRET_TOKEN,
   });
 
   async function ensureSeedClient(): Promise<void> {
@@ -50,7 +52,10 @@ async function bootstrap(): Promise<void> {
       return;
     }
 
-    await hmacAuth.clients.setSecret(HMAC_CLIENT_ID, HMAC_BOOTSTRAP_SECRET);
+    await hmacAuth.clients.create({
+      clientId: HMAC_CLIENT_ID,
+      plainSecret: HMAC_BOOTSTRAP_SECRET,
+    });
     console.log(`[${API_NAME}] seeded client '${HMAC_CLIENT_ID}' in namespace '${HMAC_NAMESPACE}' with default test secret`);
   }
 
