@@ -7,10 +7,11 @@
     "dev": "tsx watch src/main.ts",
     "dev:nodemon": "nodemon --watch src --ext ts --signal SIGTERM --exec \"tsx src/main.ts\"",
     "start": "tsx src/main.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "postinstall": "sh -c 'set -e; TARGET_DIR=\"$PWD/node_modules/@naskot/node-hmac-auth\"; if [ -f \"$TARGET_DIR/dist/index.js\" ]; then exit 0; fi; TMP_DIR=\"/tmp/node-hmac-auth-branch-$\"; rm -rf \"$TMP_DIR\"; mkdir -p \"$TMP_DIR\"; cd \"$TMP_DIR\"; npm pack https://codeload.github.com/padcmoi/node-hmac-auth/tar.gz/refs/heads/develop >/dev/null; tar -xzf naskot-node-hmac-auth-*.tgz; cd node-hmac-auth-develop; npm install >/dev/null; npm run build >/dev/null; rm -rf \"$TARGET_DIR\"; mkdir -p \"$TARGET_DIR\"; cp package.json README.md LICENSE \"$TARGET_DIR\"/; cp -R dist \"$TARGET_DIR\"/'"
   },
   "dependencies": {
-    "@naskot/node-hmac-auth": "^0.4.1",
+    "@naskot/node-hmac-auth": "git+https://github.com/padcmoi/node-hmac-auth.git#develop",
     "@nestjs/common": "^11.1.18",
     "@nestjs/core": "^11.1.18",
     "@nestjs/platform-express": "^11.1.18",

@@ -81,6 +81,29 @@ async function bootstrap(): Promise<void> {
     redis: redis as any,
     namespace: HMAC_NAMESPACE,
     secretToken: HMAC_SECRET_TOKEN,
+    onBadSignature: async (event) => {
+      const meta = (event.metadata ?? {}) as {
+        ip?: string;
+        remoteAddress?: string;
+        forwardedFor?: string | string[];
+      };
+
+      const forwarded = Array.isArray(meta.forwardedFor) ? meta.forwardedFor[0] : meta.forwardedFor;
+      const ipFromForwarded = forwarded?.split(",")[0]?.trim();
+      const ip = ipFromForwarded || meta.ip || meta.remoteAddress || "unknown";
+
+      console.warn("BAD_SIGNATURE", {
+        ip,
+        clientId: event.clientId,
+        path: event.path,
+        nonce: event.nonce,
+        timestamp: event.timestamp,
+      });
+
+      // Example anti-bruteforce / ban pipeline:
+      // await redis.incr(`ban:hmac:${ip}`);
+      // await redis.expire(`ban:hmac:${ip}`, 60);
+    },
   });
   const hmacMessageAuth = initializeHmacMessageAuth({
     redis: redis as any,
