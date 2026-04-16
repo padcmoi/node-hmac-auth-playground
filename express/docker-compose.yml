@@ -62,5 +62,130 @@ services:
       - /app/node_modules
     command: sh -c "npm install && npm run dev:nodemon"
 
+  api_shared_1:
+    image: node:22-alpine
+    container_name: hmac-lab-shared-api-1
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      API_NAME: "api_shared_1"
+      PORT: "3021"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-shared-express-1"
+      HMAC_SECRET_TOKEN: "sharedInternalToken"
+      INTERNAL_MANAGEMENT_ROUTE: "/api/internal/hmac"
+      DEFAULT_SHARED_CLIENT_ID: "sharedClientAbC"
+      DEFAULT_SHARED_CLIENT_SECRET: "superSharedSecret"
+      PEER_APIS: "http://api_shared_2:3022,http://api_shared_3:3023,http://api_shared_4:3024,http://api_shared_5:3025"
+    ports:
+      - "3021:3021"
+    volumes:
+      - ./api_shared_1:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
+  api_shared_2:
+    image: node:22-alpine
+    container_name: hmac-lab-shared-api-2
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      API_NAME: "api_shared_2"
+      PORT: "3022"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-shared-express-2"
+      HMAC_SECRET_TOKEN: "sharedInternalToken"
+      INTERNAL_MANAGEMENT_ROUTE: "/api/internal/hmac"
+      DEFAULT_SHARED_CLIENT_ID: "sharedClientAbC"
+      DEFAULT_SHARED_CLIENT_SECRET: "superSharedSecret"
+      PEER_APIS: "http://api_shared_1:3021,http://api_shared_3:3023,http://api_shared_4:3024,http://api_shared_5:3025"
+    ports:
+      - "3022:3022"
+    volumes:
+      - ./api_shared_2:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
+  api_shared_3:
+    image: node:22-alpine
+    container_name: hmac-lab-shared-api-3
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      API_NAME: "api_shared_3"
+      PORT: "3023"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-shared-express-3"
+      HMAC_SECRET_TOKEN: "sharedInternalToken"
+      INTERNAL_MANAGEMENT_ROUTE: "/api/internal/hmac"
+      DEFAULT_SHARED_CLIENT_ID: "sharedClientAbC"
+      DEFAULT_SHARED_CLIENT_SECRET: "superSharedSecret"
+      PEER_APIS: "http://api_shared_1:3021,http://api_shared_2:3022,http://api_shared_4:3024,http://api_shared_5:3025"
+    ports:
+      - "3023:3023"
+    volumes:
+      - ./api_shared_3:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
+  api_shared_4:
+    image: node:22-alpine
+    container_name: hmac-lab-shared-api-4
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      API_NAME: "api_shared_4"
+      PORT: "3024"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-shared-express-4"
+      HMAC_SECRET_TOKEN: "sharedInternalToken"
+      INTERNAL_MANAGEMENT_ROUTE: "/api/internal/hmac"
+      DEFAULT_SHARED_CLIENT_ID: "sharedClientAbC"
+      DEFAULT_SHARED_CLIENT_SECRET: "superSharedSecret"
+      PEER_APIS: "http://api_shared_1:3021,http://api_shared_2:3022,http://api_shared_3:3023,http://api_shared_5:3025"
+    ports:
+      - "3024:3024"
+    volumes:
+      - ./api_shared_4:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
+  api_shared_5:
+    image: node:22-alpine
+    container_name: hmac-lab-shared-api-5
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      API_NAME: "api_shared_5"
+      PORT: "3025"
+      REDIS_URL: "redis://user:password@redis:6379"
+      HMAC_NAMESPACE: "hmac-lab-shared-express-5"
+      HMAC_SECRET_TOKEN: "sharedInternalToken"
+      INTERNAL_MANAGEMENT_ROUTE: "/api/internal/hmac"
+      DEFAULT_SHARED_CLIENT_ID: "sharedClientAbC"
+      DEFAULT_SHARED_CLIENT_SECRET: "superSharedSecret"
+      PEER_APIS: "http://api_shared_1:3021,http://api_shared_2:3022,http://api_shared_3:3023,http://api_shared_4:3024"
+    ports:
+      - "3025:3025"
+    volumes:
+      - ./api_shared_5:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev:nodemon"
+
 volumes:
   redis_data:

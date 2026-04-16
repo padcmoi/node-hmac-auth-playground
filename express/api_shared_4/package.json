@@ -1,0 +1,25 @@
+{
+  "name": "express-api-shared-4-hmac-lab",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:nodemon": "nodemon --watch src --ext ts --signal SIGTERM --exec \"tsx src/index.ts\"",
+    "start": "tsx src/index.ts",
+    "check": "tsc --noEmit",
+    "postinstall": "sh -c 'set -e; TARGET_DIR=\"$PWD/node_modules/@naskot/node-hmac-auth\"; if [ -f \"$TARGET_DIR/dist/index.js\" ]; then exit 0; fi; TMP_DIR=\"/tmp/node-hmac-auth-branch-$$\"; rm -rf \"$TMP_DIR\"; mkdir -p \"$TMP_DIR\"; cd \"$TMP_DIR\"; TARBALL=$(npm pack https://codeload.github.com/padcmoi/node-hmac-auth/tar.gz/refs/heads/feature/http-internal-key-propagation --silent); tar -xzf \"$TARBALL\"; cd node-hmac-auth-feature-http-internal-key-propagation; npm install >/dev/null; npm run build >/dev/null; rm -rf \"$TARGET_DIR\"; mkdir -p \"$TARGET_DIR\"; cp package.json README.md LICENSE \"$TARGET_DIR\"/; cp -R dist \"$TARGET_DIR\"/'"
+  },
+  "dependencies": {
+    "@naskot/node-hmac-auth": "https://codeload.github.com/padcmoi/node-hmac-auth/tar.gz/refs/heads/feature/http-internal-key-propagation",
+    "express": "^5.1.0",
+    "redis": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.4",
+    "@types/node": "^24.6.0",
+    "nodemon": "^3.1.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
