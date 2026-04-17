@@ -97,6 +97,16 @@ export const credential = {
   },
 };
 
+function hmacHttpMiddleware(...clientIds: string[]) {
+  const allowed = new Set(clientIds.map((v) => v.trim()).filter(Boolean));
+  return async (req: any, res: any, next: (error?: unknown) => void) =>
+    hmacAuth.verifyHttpRequest(req, res, (error?: unknown) => {
+      const callerClientId = String(req?.hmacAuth?.clientId ?? "");
+      if (error || allowed.size === 0 || allowed.has(callerClientId)) return next(error);
+      throw new Error(`Client '${callerClientId || "unknown"}' is not allowed`);
+    });
+}
+
 export const http = {
   /**
    * Set one or more candidate clientIds for a signed fetch context.
@@ -105,28 +115,24 @@ export const http = {
    * Usage:
    * await http.use("svc-a").fetch("https://api.example.com/secure", { method: "POST" });
    * await http.useClientIds("svc-a").fetch("https://api.example.com/secure", { method: "POST" });
+   *
+   * app.use("/secure", http.useClientIds().middleware);
+   * app.use("/secure", http.useClientIds("svc-a", "svc-b").middleware);
    */
   use: (...clientIds: string[]) => http.useClientIds(...clientIds),
   useClientIds: (...clientIds: string[]) => {
     const firstClientId = clientIds.find((value) => typeof value === "string" && value.trim());
-    if (!firstClientId) {
-      throw new Error("Missing required clientId. Usage: http.useClientIds('svc-a').fetch(url, options)");
-    }
 
     return {
       fetch: (input: string, options?: SignedHttpFetchClientCallOptions) => {
+        if (!firstClientId) {
+          throw new Error("Forbidden: signed fetch requires at least one clientId. Use http.useClientIds('svc-a').fetch(url, options).");
+        }
         return signedFetchWithClientId(input, firstClientId, options);
       },
+      middleware: hmacHttpMiddleware(...clientIds),
     };
   },
-
-  /**
-   * Express middleware helper for protected routes.
-   *
-   * Usage:
-   * app.use("/secure", http.middleware);
-   */
-  middleware: hmacAuth.verifyHttpRequest,
 };
 
 export const interApi = {
