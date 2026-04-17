@@ -36,7 +36,7 @@ export const hmacAuth = initializeHmacHttpAuth({
   },
 });
 
-const { createSignedFetchFromClientId, signedFetchWithClientId } = createHmacRuntime(hmacAuth);
+const { createSignedFetchFromClientId, signedFetchWithClientId, hmacHttpMiddleware } = createHmacRuntime(hmacAuth);
 
 export const credential = {
   /**
@@ -96,16 +96,6 @@ export const credential = {
     return { status: true as const, clientId };
   },
 };
-
-function hmacHttpMiddleware(...clientIds: string[]) {
-  const allowed = new Set(clientIds.map((v) => v.trim()).filter(Boolean));
-  return async (req: any, res: any, next: (error?: unknown) => void) =>
-    hmacAuth.verifyHttpRequest(req, res, (error?: unknown) => {
-      const callerClientId = String(req?.hmacAuth?.clientId ?? "");
-      if (error || allowed.size === 0 || allowed.has(callerClientId)) return next(error);
-      throw new Error(`Client '${callerClientId || "unknown"}' is not allowed`);
-    });
-}
 
 export const http = {
   /**
