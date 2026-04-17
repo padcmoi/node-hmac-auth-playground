@@ -1,5 +1,5 @@
 import { createClient } from "redis";
-import { BadHttpSignatureEvent, CreateHmacClientOptions, initializeHmacHttpAuth, SignedHttpFetchClientCallOptions } from "@naskot/node-hmac-auth";
+import { CreateHmacClientOptions, initializeHmacHttpAuth, SignedHttpFetchClientCallOptions } from "@naskot/node-hmac-auth";
 
 const redis = createClient({
   url: process.env.REDIS_URL, // ex: redis://user:password@127.0.0.1:6379
@@ -34,6 +34,21 @@ export const hmacAuth = initializeHmacHttpAuth({
     });
   },
 });
+
+async function signedFetchWithClientId(input: string, clientId: string, options?: SignedHttpFetchClientCallOptions) {
+  const client = await hmacAuth.clients.get(clientId);
+  if (!client) {
+    throw new Error(`${clientId} not found in Redis`);
+  }
+
+  const peerFetch = hmacAuth.createHttpSignedFetchClient({
+    clientId,
+    secret: client.secretHash,
+    secretIsHashed: true,
+  });
+
+  return peerFetch(input, options);
+}
 
 export const credential = {
   /**
@@ -94,35 +109,34 @@ export const credential = {
   },
 };
 
-/**
- * Express middleware helper for protected routes.
- *
- * Usage:
- * app.use("/secure", verifyHmacMiddleware);
- */
-export const verifyHmacMiddleware = hmacAuth.verifyHttpRequest;
+export const http = {
+  /**
+   * Set one or more candidate clientIds for a signed fetch context.
+   * The first non-empty clientId is always used.
+   *
+   * Usage:
+   * await http.use("svc-a").fetch("https://api.example.com/secure", { method: "POST" });
+   * await http.useClientIds("svc-a").fetch("https://api.example.com/secure", { method: "POST" });
+   */
+  use: (...clientIds: string[]) => http.useClientIds(...clientIds),
+  useClientIds: (...clientIds: string[]) => {
+    const firstClientId = clientIds.find((value) => typeof value === "string" && value.trim());
+    if (!firstClientId) {
+      throw new Error("Missing required clientId. Usage: http.useClientIds('svc-a').fetch(url, options)");
+    }
 
-/**
- * Signed fetch helper using a client secretHash from Redis.
- *
- * Usage:
- * const response = await signedFetch(
- *   "http://api_shared_2:3022/secure/shared-post?q=123",
- *   "client_mobile",
- *   { method: "POST", body: { from: "api_shared_1", q: "123" } },
- * );
- */
-export async function signedFetch(input: string, clientId: string, options?: SignedHttpFetchClientCallOptions) {
-  const client = await hmacAuth.clients.get(clientId);
-  if (!client) {
-    throw new Error(`${clientId} not found in Redis`);
-  }
+    return {
+      fetch: (input: string, options?: SignedHttpFetchClientCallOptions) => {
+        return signedFetchWithClientId(input, firstClientId, options);
+      },
+    };
+  },
 
-  const peerFetch = hmacAuth.createHttpSignedFetchClient({
-    clientId,
-    secret: client.secretHash,
-    secretIsHashed: true,
-  });
-
-  return peerFetch(input, options);
-}
+  /**
+   * Express middleware helper for protected routes.
+   *
+   * Usage:
+   * app.use("/secure", http.middleware);
+   */
+  middleware: hmacAuth.verifyHttpRequest,
+};
