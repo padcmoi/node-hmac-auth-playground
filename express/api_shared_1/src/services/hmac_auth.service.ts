@@ -159,10 +159,10 @@ export const http = {
   middleware: hmacAuth.verifyHttpRequest,
 };
 
-type PropagateCreateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
-type PropagateUpdateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
-type PropagateDeleteOptions = { propagateClientId: string; useClientId?: string; targetApis: string[] };
-type PropagateHealthOptions = { useClientId: string; targetApis: string[] };
+type PropagateServiceCreateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
+type PropagateServiceUpdateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
+type PropagateServiceDeleteOptions = { propagateClientId: string; useClientId?: string; targetApis: string[] };
+type PropagateServiceHealthOptions = { useClientId: string; targetApis: string[] };
 
 export const interApi = {
   /**
@@ -174,7 +174,7 @@ export const interApi = {
   middleware: hmacAuth.createInternalManagementMiddleware(),
 
   propagate: {
-    create: async (opts: PropagateCreateOptions) => {
+    create: async (opts: PropagateServiceCreateOptions) => {
       const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
 
       const results = await hmacAuth.propagateClientToApis({
@@ -188,7 +188,7 @@ export const interApi = {
       return results;
     },
 
-    update: async (opts: PropagateUpdateOptions) => {
+    update: async (opts: PropagateServiceUpdateOptions) => {
       const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
 
       const results = await hmacAuth.propagateClientToApis({
@@ -202,7 +202,7 @@ export const interApi = {
       return results;
     },
 
-    delete: async (opts: PropagateDeleteOptions) => {
+    delete: async (opts: PropagateServiceDeleteOptions) => {
       const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
 
       const results = await hmacAuth.propagateClientToApis({
@@ -215,7 +215,7 @@ export const interApi = {
       return results;
     },
 
-    health: async (opts: PropagateHealthOptions) => {
+    health: async (opts: PropagateServiceHealthOptions) => {
       const results = await hmacAuth.propagateClientToApis({
         operation: "health",
         targets: opts.targetApis,
