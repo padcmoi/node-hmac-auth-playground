@@ -1,5 +1,5 @@
 import { createClient } from "redis";
-import { createHmacRuntime, initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
+import { createHmacRuntime, initializeHmacHttpAuth, initializeHmacMessageAuth } from "@naskot/node-hmac-auth";
 import type { CreateHmacClientOptions, PropagateServiceCreateOptions, PropagateServiceDeleteOptions, PropagateServiceHealthOptions, PropagateServiceUpdateOptions, SignedHttpFetchClientCallOptions } from "@naskot/node-hmac-auth";
 
 const redis = createClient({
@@ -8,9 +8,11 @@ const redis = createClient({
 
 await redis.connect();
 
+const HMAC_NAMESPACE = process.env.HMAC_NAMESPACE ?? "my-api-prod";
+
 export const hmacAuth = initializeHmacHttpAuth({
   redis,
-  namespace: process.env.HMAC_NAMESPACE ?? "my-api-prod",
+  namespace: HMAC_NAMESPACE,
   maxSkewMs: 5 * 60 * 1000,
   defaultSecretLengthBytes: 32,
   secretToken: process.env.HMAC_SECRET_TOKEN, // strongly recommended
@@ -34,6 +36,12 @@ export const hmacAuth = initializeHmacHttpAuth({
       timestamp: event.timestamp,
     });
   },
+});
+
+export const hmacMessageAuth = initializeHmacMessageAuth({
+  redis,
+  namespace: `${HMAC_NAMESPACE}-messages`,
+  secretToken: process.env.HMAC_SECRET_TOKEN,
 });
 
 const { createSignedFetchFromClientId, signedFetchWithClientId, hmacHttpMiddleware } = createHmacRuntime(hmacAuth);
@@ -185,5 +193,27 @@ export const interApi = {
 
       return results;
     },
+  },
+};
+
+export const message = {
+  /**
+   * Sign an async message payload with a clientId (queue/event use case).
+   *
+   * Usage:
+   * const signed = await message.sign("client_mobile", { event: "order.created", id: 42 });
+   */
+  sign: async (clientId: string, payload: unknown) => {
+    return hmacMessageAuth.signMessage({ clientId, message: payload });
+  },
+
+  /**
+   * Verify an async message signature with a clientId.
+   *
+   * Usage:
+   * await message.verify("client_mobile", { event: "order.created", id: 42 }, signature);
+   */
+  verify: async (clientId: string, payload: unknown, signature: string) => {
+    return hmacMessageAuth.verifyMessage({ clientId, message: payload, signature });
   },
 };
