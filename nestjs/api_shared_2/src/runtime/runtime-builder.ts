@@ -1,3 +1,4 @@
+import { InitializedHmacHttpAuth } from "@naskot/node-hmac-auth";
 import type { SharedApiConfig } from "../config/shared.config.js";
 import type { PeerCallResult, RuntimeContext } from "./runtime-context.js";
 
@@ -42,7 +43,7 @@ async function parseResponseBody(response: Response): Promise<unknown> {
 
 interface RuntimeBuilderDeps {
   config: SharedApiConfig;
-  hmacAuth: any;
+  hmacAuth: InitializedHmacHttpAuth;
 }
 
 export function createRuntimeContext({ config, hmacAuth }: RuntimeBuilderDeps): RuntimeContext {

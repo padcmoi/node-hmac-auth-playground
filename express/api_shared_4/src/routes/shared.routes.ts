@@ -1,9 +1,9 @@
 import express from "express";
-import { captureRawBody } from "@naskot/node-hmac-auth";
+import { captureRawBody, InitializedHmacHttpAuth } from "@naskot/node-hmac-auth";
 import type { SharedController } from "../controllers/controller.types";
 
 interface SharedRoutesDeps {
-  hmacAuth: any;
+  hmacAuth: InitializedHmacHttpAuth;
   controller: SharedController;
 }
 

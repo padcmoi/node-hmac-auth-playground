@@ -1,9 +1,10 @@
 import type { Request, Response } from "express";
 import type { SharedApiConfig } from "../config/shared.config";
+import { InitializedHmacHttpAuth } from "@naskot/node-hmac-auth";
 
 export interface SharedControllerDeps {
   config: SharedApiConfig;
-  hmacAuth: any;
+  hmacAuth: InitializedHmacHttpAuth;
 }
 
 export interface SharedController {
