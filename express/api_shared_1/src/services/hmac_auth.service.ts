@@ -9,11 +9,11 @@ await redis.connect();
 
 export const hmacAuth = initializeHmacHttpAuth({
   redis,
-  namespace: "my-api-prod",
+  namespace: process.env.HMAC_NAMESPACE ?? "my-api-prod",
   maxSkewMs: 5 * 60 * 1000,
   defaultSecretLengthBytes: 32,
   secretToken: process.env.HMAC_SECRET_TOKEN, // strongly recommended
-  internalManagementRoute: "/api/internal/hmac-auth", // optional: clientId propagation between APIs
+  internalManagementRoute: process.env.INTERNAL_MANAGEMENT_ROUTE ?? "/api/internal/hmac-auth", // optional: clientId propagation between APIs
   onBadSignature: async (event) => {
     const meta = (event.metadata ?? {}) as {
       ip?: string;
