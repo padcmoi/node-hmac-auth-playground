@@ -160,6 +160,9 @@ export const http = {
 };
 
 type PropagateCreateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
+type PropagateUpdateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
+type PropagateDeleteOptions = { propagateClientId: string; useClientId?: string; targetApis: string[] };
+type PropagateHealthOptions = { useClientId: string; targetApis: string[] };
 
 export const interApi = {
   /**
@@ -182,8 +185,44 @@ export const interApi = {
         apiFetch: await internalHttp.createSignedFetchFromClientId(fetchWithClientId),
       });
 
-      // Each result includes status and accepted boolean (201/403)
-      console.log(results);
+      return results;
+    },
+
+    update: async (opts: PropagateUpdateOptions) => {
+      const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
+
+      const results = await hmacAuth.propagateClientToApis({
+        operation: "update",
+        targets: opts.targetApis,
+        clientId: opts.propagateClientId,
+        secret: opts.plainSecret,
+        apiFetch: await internalHttp.createSignedFetchFromClientId(fetchWithClientId),
+      });
+
+      return results;
+    },
+
+    delete: async (opts: PropagateDeleteOptions) => {
+      const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
+
+      const results = await hmacAuth.propagateClientToApis({
+        operation: "delete",
+        targets: opts.targetApis,
+        clientId: opts.propagateClientId,
+        apiFetch: await internalHttp.createSignedFetchFromClientId(fetchWithClientId),
+      });
+
+      return results;
+    },
+
+    health: async (opts: PropagateHealthOptions) => {
+      const results = await hmacAuth.propagateClientToApis({
+        operation: "health",
+        targets: opts.targetApis,
+        apiFetch: await internalHttp.createSignedFetchFromClientId(opts.useClientId),
+      });
+
+      return results;
     },
   },
 };
