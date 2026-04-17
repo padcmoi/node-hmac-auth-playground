@@ -34,14 +34,10 @@ Redis ACL (both stacks):
 - password: `password`
 - URL: `redis://user:password@127.0.0.1:6379`
 
-## Branch under test
+## Library source
 
-Shared APIs are configured to use the library from:
-
-- `feature/http-internal-key-propagation`
-
-They do not use npm registry for this path.
-They install the branch tarball and run a postinstall build to ensure `dist/` exists.
+Shared APIs do not use npm registry for this path.
+They install the library tarball and run a postinstall build to ensure `dist/` exists.
 
 ## Folder layout
 
