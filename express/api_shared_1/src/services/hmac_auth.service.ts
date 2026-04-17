@@ -63,6 +63,35 @@ export const credential = {
 
     return await hmacAuth.clients.create(opts);
   },
+
+  /**
+   * Regenerate an existing client secret using a required plainSecret.
+   *
+   * Usage:
+   * await credential.regenerateSecret("client_mobile", "newSuperSecret");
+   */
+  regenerateSecret: async (clientId: string, plainSecret: string) => {
+    if (!(await credential.get(clientId))) {
+      return { status: false, error: `Cannot regenerate credential: clientId '${clientId}' does not exist.` };
+    }
+
+    return await hmacAuth.clients.regenerateSecret(clientId, { plainSecret });
+  },
+
+  /**
+   * Revoke (delete) an existing client credential.
+   *
+   * Usage:
+   * await credential.revoke("client_mobile");
+   */
+  revoke: async (clientId: string) => {
+    if (!(await credential.get(clientId))) {
+      return { status: false, error: `Cannot revoke credential: clientId '${clientId}' does not exist.` };
+    }
+
+    await hmacAuth.clients.delete(clientId);
+    return { status: true, clientId };
+  },
 };
 
 /**
