@@ -38,24 +38,35 @@ export const hmacAuth = initializeHmacHttpAuth({
   },
 });
 
-/**
- * Create a client credential only if it does not already exist.
- *
- * Usage:
- * await create({
- *   clientId: "client_mobile",
- *   plainSecret: "superSharedSecret",
- *   expiresAt: null,
- * });
- */
-export async function create(opts: CreateHmacClientOptions) {
-  const existing = await hmacAuth.clients.get(opts.clientId);
-  if (existing) {
-    return existing;
-  }
+export const credential = {
+  /**
+   * Read one client credential by clientId.
+   *
+   * Usage:
+   * const client = await credential.get("client_mobile");
+   */
+  get: async (clientId: string) => {
+    return await hmacAuth.clients.get(clientId);
+  },
 
-  return await hmacAuth.clients.create(opts);
-}
+  /**
+   * Create a client credential only if it does not already exist.
+   *
+   * Usage:
+   * await credential.create({
+   *   clientId: "client_mobile",
+   *   plainSecret: "superSharedSecret",
+   *   expiresAt: null,
+   * });
+   */
+  create: async (opts: CreateHmacClientOptions) => {
+    if (await credential.get(opts.clientId)) {
+      return { status: false, error: `Cannot create credential: clientId '${opts.clientId}' already exists.` };
+    }
+
+    return await hmacAuth.clients.create(opts);
+  },
+};
 
 /**
  * Express middleware helper for protected routes.
