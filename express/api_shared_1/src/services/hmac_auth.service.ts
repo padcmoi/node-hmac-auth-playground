@@ -1,5 +1,5 @@
 import { createClient } from "redis";
-import { initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
+import { createHmacRuntime, initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
 import type { CreateHmacClientOptions, PropagateServiceCreateOptions, PropagateServiceDeleteOptions, PropagateServiceHealthOptions, PropagateServiceUpdateOptions, SignedHttpFetchClientCallOptions } from "@naskot/node-hmac-auth";
 
 const redis = createClient({
@@ -36,38 +36,7 @@ export const hmacAuth = initializeHmacHttpAuth({
   },
 });
 
-const internalHttp = {
-  /**
-   * Build a signed fetch function from a clientId by resolving its secretHash from Redis.
-   *
-   * Usage:
-   * const signer = await internalHttp.createSignedFetchFromClientId("svc-a");
-   * await signer("https://api.example.com/secure", { method: "POST" });
-   */
-  createSignedFetchFromClientId: async (clientId: string) => {
-    const client = await hmacAuth.clients.get(clientId);
-    if (!client) {
-      throw new Error(`${clientId} not found in Redis`);
-    }
-
-    return hmacAuth.createHttpSignedFetchClient({
-      clientId,
-      secret: client.secretHash,
-      secretIsHashed: true,
-    });
-  },
-
-  /**
-   * Execute one signed HTTP request by clientId.
-   *
-   * Usage:
-   * await internalHttp.signedFetchWithClientId("https://api.example.com/secure", "svc-a", { method: "POST" });
-   */
-  signedFetchWithClientId: async (input: string, clientId: string, options?: SignedHttpFetchClientCallOptions) => {
-    const signedFetch = await internalHttp.createSignedFetchFromClientId(clientId);
-    return signedFetch(input, options);
-  },
-};
+const { createSignedFetchFromClientId, signedFetchWithClientId } = createHmacRuntime(hmacAuth);
 
 export const credential = {
   /**
@@ -146,7 +115,7 @@ export const http = {
 
     return {
       fetch: (input: string, options?: SignedHttpFetchClientCallOptions) => {
-        return internalHttp.signedFetchWithClientId(input, firstClientId, options);
+        return signedFetchWithClientId(input, firstClientId, options);
       },
     };
   },
@@ -178,7 +147,7 @@ export const interApi = {
         targets: opts.targetApis,
         clientId: opts.propagateClientId,
         secret: opts.plainSecret,
-        apiFetch: await internalHttp.createSignedFetchFromClientId(fetchWithClientId),
+        apiFetch: await createSignedFetchFromClientId(fetchWithClientId),
       });
 
       return results;
@@ -192,7 +161,7 @@ export const interApi = {
         targets: opts.targetApis,
         clientId: opts.propagateClientId,
         secret: opts.plainSecret,
-        apiFetch: await internalHttp.createSignedFetchFromClientId(fetchWithClientId),
+        apiFetch: await createSignedFetchFromClientId(fetchWithClientId),
       });
 
       return results;
@@ -205,7 +174,7 @@ export const interApi = {
         operation: "delete",
         targets: opts.targetApis,
         clientId: opts.propagateClientId,
-        apiFetch: await internalHttp.createSignedFetchFromClientId(fetchWithClientId),
+        apiFetch: await createSignedFetchFromClientId(fetchWithClientId),
       });
 
       return results;
@@ -215,7 +184,7 @@ export const interApi = {
       const results = await hmacAuth.propagateClientToApis({
         operation: "health",
         targets: opts.targetApis,
-        apiFetch: await internalHttp.createSignedFetchFromClientId(opts.useClientId),
+        apiFetch: await createSignedFetchFromClientId(opts.useClientId),
       });
 
       return results;
