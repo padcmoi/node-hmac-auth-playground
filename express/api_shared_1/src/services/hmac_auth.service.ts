@@ -73,7 +73,7 @@ export const credential = {
    */
   create: async (opts: CreateHmacClientOptions) => {
     if (await credential.get(opts.clientId)) {
-      return { status: false, error: `Cannot create credential: clientId '${opts.clientId}' already exists.` };
+      return { status: false as const, error: `Cannot create credential: clientId '${opts.clientId}' already exists.` };
     }
 
     return await hmacAuth.clients.create(opts);
@@ -87,7 +87,7 @@ export const credential = {
    */
   regenerateSecret: async (clientId: string, plainSecret: string) => {
     if (!(await credential.get(clientId))) {
-      return { status: false, error: `Cannot regenerate credential: clientId '${clientId}' does not exist.` };
+      return { status: false as const, error: `Cannot regenerate credential: clientId '${clientId}' does not exist.` };
     }
 
     return await hmacAuth.clients.regenerateSecret(clientId, { plainSecret });
@@ -101,11 +101,11 @@ export const credential = {
    */
   revoke: async (clientId: string) => {
     if (!(await credential.get(clientId))) {
-      return { status: false, error: `Cannot revoke credential: clientId '${clientId}' does not exist.` };
+      return { status: false as const, error: `Cannot revoke credential: clientId '${clientId}' does not exist.` };
     }
 
     await hmacAuth.clients.delete(clientId);
-    return { status: true, clientId };
+    return { status: true as const, clientId };
   },
 };
 
