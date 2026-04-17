@@ -1,5 +1,6 @@
 import { createClient } from "redis";
-import { CreateHmacClientOptions, initializeHmacHttpAuth, PropagateHmacClientOptions, SignedHttpFetchClientCallOptions } from "@naskot/node-hmac-auth";
+import { initializeHmacHttpAuth } from "@naskot/node-hmac-auth";
+import type { CreateHmacClientOptions, PropagateServiceCreateOptions, PropagateServiceDeleteOptions, PropagateServiceHealthOptions, PropagateServiceUpdateOptions, SignedHttpFetchClientCallOptions } from "@naskot/node-hmac-auth";
 
 const redis = createClient({
   url: process.env.REDIS_URL, // ex: redis://user:password@127.0.0.1:6379
@@ -158,11 +159,6 @@ export const http = {
    */
   middleware: hmacAuth.verifyHttpRequest,
 };
-
-type PropagateServiceCreateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
-type PropagateServiceUpdateOptions = { propagateClientId: string; useClientId?: string; targetApis: string[]; plainSecret: string };
-type PropagateServiceDeleteOptions = { propagateClientId: string; useClientId?: string; targetApis: string[] };
-type PropagateServiceHealthOptions = { useClientId: string; targetApis: string[] };
 
 export const interApi = {
   /**
