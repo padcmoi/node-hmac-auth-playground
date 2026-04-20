@@ -14,6 +14,7 @@ const PEER_BASE_URL = process.env.PEER_BASE_URL ?? "http://127.0.0.1:3002";
 const HMAC_CLIENT_ID = process.env.HMAC_CLIENT_ID ?? "clientIdAbC";
 const HMAC_BOOTSTRAP_SECRET = process.env.HMAC_BOOTSTRAP_SECRET ?? "superSharedSecret";
 const HMAC_SECRET_TOKEN = process.env.HMAC_SECRET_TOKEN ?? "sharedHmacToken";
+const DEFAULT_BOOTSTRAP_ALLOWED_IPS = ["172.0.0.0/8"];
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -38,6 +39,17 @@ function normalizeClaimedClientId(value: unknown): string | undefined {
   }
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function resolveBootstrapAllowedIps(): string[] {
+  const fromEnv = (process.env.HMAC_BOOTSTRAP_ALLOWED_IPS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (fromEnv.length > 0) {
+    return fromEnv;
+  }
+  return DEFAULT_BOOTSTRAP_ALLOWED_IPS;
 }
 
 async function bootstrap(): Promise<void> {
@@ -86,6 +98,7 @@ async function bootstrap(): Promise<void> {
     await hmacAuth.clients.create({
       clientId: HMAC_CLIENT_ID,
       plainSecret: HMAC_BOOTSTRAP_SECRET,
+      allowedIps: resolveBootstrapAllowedIps(),
     });
     console.log(`[${API_NAME}] seeded client '${HMAC_CLIENT_ID}' in namespace '${HMAC_NAMESPACE}' with default test secret`);
   }
