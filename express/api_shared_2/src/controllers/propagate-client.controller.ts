@@ -2,6 +2,22 @@ import type { Request, Response } from "express";
 import type { SharedControllerDeps } from "./controller.types";
 import { parseExpiresAt, parseOperation, readQueryString, readQueryStringList, toErrorMessage } from "../utils/shared.utils";
 
+const DEFAULT_PROPAGATION_ALLOWED_IPS = ["172.0.0.0/8"];
+
+function resolvePropagationAllowedIps(fromQuery: string[]): string[] {
+  const deduped = Array.from(new Set(fromQuery.map((value) => value.trim()).filter(Boolean)));
+  if (deduped.length > 0) {
+    return deduped;
+  }
+
+  const fromEnv = readQueryStringList(process.env.HMAC_PROPAGATION_ALLOWED_IPS);
+  if (fromEnv.length > 0) {
+    return fromEnv;
+  }
+
+  return DEFAULT_PROPAGATION_ALLOWED_IPS;
+}
+
 export function createPropagateClientController({ config, hmacAuth }: SharedControllerDeps) {
   return async function propagateClient(req: Request, res: Response): Promise<void> {
     const operation = parseOperation(readQueryString(req.query.operation));
@@ -10,6 +26,7 @@ export function createPropagateClientController({ config, hmacAuth }: SharedCont
     const inputSecretHash = readQueryString(req.query.secretHash);
     const useClientId = readQueryString(req.query.useClientId);
     const targets = readQueryStringList(req.query.target);
+    const allowedIps = resolvePropagationAllowedIps([...readQueryStringList(req.query.allowedIp), ...readQueryStringList(req.query.allowedIps)]);
     const expiresAt = parseExpiresAt(readQueryString(req.query.expiresAt));
 
     if (!clientId) {
@@ -66,6 +83,7 @@ export function createPropagateClientController({ config, hmacAuth }: SharedCont
       }
 
       const payloadSecretHash = operation === "create" || operation === "update" ? propagatedSecretHash : undefined;
+      const payloadAllowedIps = operation === "create" || operation === "update" ? allowedIps : undefined;
 
       const signerClientId = useClientId ?? clientId;
       const signerClient = await hmacAuth.clients.get(signerClientId);
@@ -93,6 +111,7 @@ export function createPropagateClientController({ config, hmacAuth }: SharedCont
         targets,
         clientId,
         secretHash: payloadSecretHash,
+        allowedIps: payloadAllowedIps,
         expiresAt,
         apiFetch,
       });
@@ -106,6 +125,7 @@ export function createPropagateClientController({ config, hmacAuth }: SharedCont
         useClientId: useClientId ?? null,
         signerClientId,
         targets,
+        allowedIps: payloadAllowedIps ?? null,
         total: results.length,
         accepted,
         rejected: results.length - accepted,

@@ -14,6 +14,7 @@ export interface PropagatePayload {
   clientId?: string;
   secret?: string;
   secretHash?: string;
+  allowedIps?: string[];
   useClientId?: string;
   target?: string[];
   expiresAt?: string;

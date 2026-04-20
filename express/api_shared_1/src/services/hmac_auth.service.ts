@@ -9,6 +9,24 @@ const redis = createClient({
 await redis.connect();
 
 const HMAC_NAMESPACE = process.env.HMAC_NAMESPACE ?? "my-api-prod";
+const DEFAULT_PROPAGATION_ALLOWED_IPS = ["172.0.0.0/8"];
+
+function resolvePropagationAllowedIps(allowedIps?: string[]) {
+  const deduped = Array.from(new Set((allowedIps ?? []).map((value) => value.trim()).filter(Boolean)));
+  if (deduped.length > 0) {
+    return deduped;
+  }
+
+  const fromEnv = (process.env.HMAC_PROPAGATION_ALLOWED_IPS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (fromEnv.length > 0) {
+    return fromEnv;
+  }
+
+  return DEFAULT_PROPAGATION_ALLOWED_IPS;
+}
 
 export const hmacAuth = initializeHmacHttpAuth({
   redis,
@@ -145,12 +163,14 @@ export const interApi = {
   propagate: {
     create: async (opts: PropagateServiceCreateOptions) => {
       const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
+      const allowedIps = resolvePropagationAllowedIps(opts.allowedIps);
 
       const results = await hmacAuth.propagateClientToApis({
         operation: "create",
         targets: opts.targetApis,
         clientId: opts.propagateClientId,
         secret: opts.plainSecret,
+        allowedIps,
         apiFetch: await createSignedFetchFromClientId(fetchWithClientId),
       });
 
@@ -159,12 +179,14 @@ export const interApi = {
 
     update: async (opts: PropagateServiceUpdateOptions) => {
       const fetchWithClientId = opts.useClientId ? opts.useClientId : opts.propagateClientId;
+      const allowedIps = resolvePropagationAllowedIps(opts.allowedIps);
 
       const results = await hmacAuth.propagateClientToApis({
         operation: "update",
         targets: opts.targetApis,
         clientId: opts.propagateClientId,
         secret: opts.plainSecret,
+        allowedIps,
         apiFetch: await createSignedFetchFromClientId(fetchWithClientId),
       });
 

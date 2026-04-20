@@ -46,6 +46,25 @@ interface RuntimeBuilderDeps {
   hmacAuth: InitializedHmacHttpAuth;
 }
 
+const DEFAULT_PROPAGATION_ALLOWED_IPS = ["172.0.0.0/8"];
+
+function resolvePropagationAllowedIps(fromPayload: string[] | undefined): string[] {
+  const deduped = Array.from(new Set((fromPayload ?? []).map((value) => value.trim()).filter(Boolean)));
+  if (deduped.length > 0) {
+    return deduped;
+  }
+
+  const fromEnv = (process.env.HMAC_PROPAGATION_ALLOWED_IPS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (fromEnv.length > 0) {
+    return fromEnv;
+  }
+
+  return DEFAULT_PROPAGATION_ALLOWED_IPS;
+}
+
 export function createRuntimeContext({ config, hmacAuth }: RuntimeBuilderDeps): RuntimeContext {
   return {
     apiName: config.apiName,
@@ -109,6 +128,7 @@ export function createRuntimeContext({ config, hmacAuth }: RuntimeBuilderDeps): 
       const inputSecretHash = payload.secretHash;
       const useClientId = payload.useClientId;
       const targets = payload.target ?? [];
+      const allowedIps = resolvePropagationAllowedIps(payload.allowedIps);
       const expiresAt = parseExpiresAt(payload.expiresAt);
 
       if (!clientId) {
@@ -162,6 +182,7 @@ export function createRuntimeContext({ config, hmacAuth }: RuntimeBuilderDeps): 
       }
 
       const payloadSecretHash = operation === "create" || operation === "update" ? propagatedSecretHash : undefined;
+      const payloadAllowedIps = operation === "create" || operation === "update" ? allowedIps : undefined;
 
       const signerClientId = useClientId ?? clientId;
       const signerClient = await hmacAuth.clients.get(signerClientId);
@@ -188,6 +209,7 @@ export function createRuntimeContext({ config, hmacAuth }: RuntimeBuilderDeps): 
         targets,
         clientId,
         secretHash: payloadSecretHash,
+        allowedIps: payloadAllowedIps,
         expiresAt,
         apiFetch,
       });
@@ -201,6 +223,7 @@ export function createRuntimeContext({ config, hmacAuth }: RuntimeBuilderDeps): 
         useClientId: useClientId ?? null,
         signerClientId,
         targets,
+        allowedIps: payloadAllowedIps ?? null,
         total: results.length,
         accepted,
         rejected: results.length - accepted,

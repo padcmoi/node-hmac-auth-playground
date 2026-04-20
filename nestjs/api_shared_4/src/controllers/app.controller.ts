@@ -48,11 +48,16 @@ export class AppController {
   @Get("public/propagate-client")
   async propagateClient(@Query() query: Record<string, unknown>, @Res({ passthrough: true }) res: any) {
     try {
+      const allowedIps = Array.from(
+        new Set([...readQueryStringList(query.allowedIp), ...readQueryStringList(query.allowedIps)]),
+      );
+
       const payload: PropagatePayload = {
         operation: readQueryString(query.operation),
         clientId: readQueryString(query.clientId),
         secret: readQueryString(query.secret),
         secretHash: readQueryString(query.secretHash),
+        allowedIps,
         useClientId: readQueryString(query.useClientId),
         target: readQueryStringList(query.target),
         expiresAt: readQueryString(query.expiresAt),

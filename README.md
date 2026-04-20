@@ -81,9 +81,12 @@ docker compose up -d redis api_shared_1 api_shared_2 api_shared_3 api_shared_4 a
 Each `api_shared_*` exposes:
 
 - `GET /public/call-shared-get?keyId=<clientId>&q=<message>`
-- `GET /public/propagate-client?operation=<create|update|delete|health>&clientId=<id>&target=<url>[&target=<url>...]&secret=<plainSecret optional>&secretHash=<hash optional>&useClientId=<signerClientId optional>`
+- `GET /public/propagate-client?operation=<create|update|delete|health>&clientId=<id>&target=<url>[&target=<url>...]&secret=<plainSecret optional>&secretHash=<hash optional>&allowedIp=<ip_or_cidr optional repeatable>&useClientId=<signerClientId optional>`
 - `POST /secure/shared-post` (HMAC required)
 - Internal management route (enabled): `/api/internal/hmac`
+
+If `allowedIp` is omitted for `create`/`update`, shared controllers fallback to:
+`172.0.0.0/8` (or `HMAC_PROPAGATION_ALLOWED_IPS` when set).
 
 ## End-to-end test flow (shared)
 
@@ -119,13 +122,13 @@ Expected: peer failures (`401 UNKNOWN_CLIENT`).
 4) Propagate client to the 4 peer APIs (create with custom secret):
 
 ```bash
-curl -s "http://127.0.0.1:3021/public/propagate-client?operation=create&clientId=sharedClientAbC&secret=superSharedSecret&useClientId=sharedClientAbC&target=http://api_shared_2:3022&target=http://api_shared_3:3023&target=http://api_shared_4:3024&target=http://api_shared_5:3025" | jq
+curl -s "http://127.0.0.1:3021/public/propagate-client?operation=create&clientId=sharedClientAbC&secret=superSharedSecret&allowedIp=172.0.0.0/8&useClientId=sharedClientAbC&target=http://api_shared_2:3022&target=http://api_shared_3:3023&target=http://api_shared_4:3024&target=http://api_shared_5:3025" | jq
 ```
 
 Or create with auto-generated secret (no `secret`, hash is generated locally then propagated):
 
 ```bash
-curl -s "http://127.0.0.1:3021/public/propagate-client?operation=create&clientId=sharedClientAbC&useClientId=sharedClientAbC&target=http://api_shared_2:3022&target=http://api_shared_3:3023&target=http://api_shared_4:3024&target=http://api_shared_5:3025" | jq
+curl -s "http://127.0.0.1:3021/public/propagate-client?operation=create&clientId=sharedClientAbC&allowedIp=172.0.0.0/8&useClientId=sharedClientAbC&target=http://api_shared_2:3022&target=http://api_shared_3:3023&target=http://api_shared_4:3024&target=http://api_shared_5:3025" | jq
 ```
 
 Expected: `accepted: 4`, each peer `status: 201`, and `propagatedSecretHash` in response.
